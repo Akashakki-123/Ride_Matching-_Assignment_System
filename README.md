@@ -151,10 +151,27 @@ cp .env.example .env
 
 # 4. Configure environment variables
 # Edit .env with your MongoDB and Redis credentials
+```
 
-# 5. Start the server
-npm start          # Production
-npm run dev        # Development (with nodemon)
+### Running the Server
+
+```bash
+# Production - Direct Node
+npm start
+
+# Development - Using Nodemon (auto-reload on file changes)
+npm run dev
+
+# Or run directly with nodemon
+npx nodemon index.js
+```
+
+The server will start on port 8000 (or whatever PORT you set in .env)
+
+```
+Backend running on port 8000
+✅ Redis connected
+Datebase Connected
 ```
 
 ### Example `.env` Configuration
