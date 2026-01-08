@@ -1,5 +1,6 @@
 import {
   registerDriver,
+  driverLogin,
   updateDriverLocation,
   updateDriverStatus,
   getDriverRideHistory as getHistoryFromHelper
@@ -21,6 +22,18 @@ export async function registerDriverInfo(req, res) {
     const { status, message, data } = await registerDriver(req);
     return status
       ? created(res, message, data)
+      : badRequest(res, message);
+  } catch (error) {
+    return unknownError(res, error.message);
+  }
+}
+
+// ---------------- driver login ----------------
+export async function driverLoginInfo(req, res) {
+  try {
+    const { status, message, data } = await driverLogin(req);
+    return status
+      ? success(res, message, data)
       : badRequest(res, message);
   } catch (error) {
     return unknownError(res, error.message);

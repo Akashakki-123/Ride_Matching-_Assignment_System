@@ -129,6 +129,50 @@ PATCH  /:id/cancel
 
 ---
 
+## 🔐 Authentication & Authorization
+
+This project now includes JWT-based authentication and role-based authorization for Drivers and Passengers.
+
+- Authentication: JSON Web Tokens (JWT) are used to authenticate requests.
+- Passwords: All passwords are hashed using bcrypt before being stored.
+- Roles: `driver` and `passenger` — middleware enforces role-specific endpoints.
+
+### New / Updated Endpoints
+
+Driver
+- `POST /api/drivers/register`
+  Body: { name, phoneNumber, email, password, vehicleType, capacity, latitude, longitude }
+  Response: { _id, name, email, token, ... } (returns JWT token)
+
+- `POST /api/drivers/login`
+  Body: { email, password }
+  Response: { token, driver }
+
+Passenger
+- `POST /api/passengers/register`
+  Body: { name, phoneNumber, email, password }
+  Response: { _id, name, email, token, ... }
+
+- `POST /api/passengers/login`
+  Body: { email, password }
+  Response: { token, passenger }
+
+Ride
+- `POST /api/rider/request` (protected - passenger)
+  - Requires header: `Authorization: Bearer <token>`
+  - Passenger details are automatically attached from the authenticated user token; keep the request body fields for pickup/dropoff and passengerCount.
+
+### Environment variables
+
+Add these to your `.env`:
+```
+JWT_SECRET=your-secret-key-change-in-production
+JWT_EXPIRY=7d
+```
+
+Security note: use a strong `JWT_SECRET` in production and rotate it as needed. Tokens expire by default (see `JWT_EXPIRY`).
+
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -348,19 +392,83 @@ const expiredRides = await Ride.find({
 
 ---
 
-## 📊 Database Indexes
+## 🗂 Project Structure
 
-```javascript
-// Driver Indexes
-- location: "2dsphere"      // Geospatial queries
-- status: 1                 // Filter by availability
-- updatedAt: -1            // Quick access to recent drivers
+A high-level view of the repository and important folders/files:
 
-// Ride Indexes
-- status: 1                 // Filter by state
-- createdAt: -1            // Sort by latest
-- driverId: 1              // Quick ride lookup by driver
-```
+- app.js
+- index.js
+- package.json
+- README.md
+- .env.example
+- AUTHENTICATION.md
+- QUICKSTART.md
+- src/
+  - api/
+    - v1/
+      - index.js
+      - config/
+        - mongodb.js
+        - redis.js
+      - constants/
+        - messageConstants.js
+      - controllers/
+        - driver.controller.js
+        - ride.controller.js
+        - passenger.controller.js
+      - formatters/
+        - common.formatter.js
+        - driver.formatter.js
+        - ride.formatter.js
+        - passenger.formatter.js
+      - helpers/
+        - driver.helper.js
+        - passenger.helper.js
+        - response.helper.js
+        - rideMatching.helper.js
+        - rideState.helper.js
+      - jobs/
+        - autoCancel.job.js
+      - middlewares/
+        - auth.middleware.js
+        - redisLock.middleware.js
+        - stateGuard.middleware.js
+      - models/
+        - driver.model.js
+        - passenger.model.js
+        - ride.model.js
+      - routes/
+        - driver.routes.js
+        - passenger.routes.js
+        - ride.routes.js
+      - utills/
+        - auth.util.js
+        - redis.util.js
+
+
+## 🔁 Recent Changes (Authentication & model updates)
+
+I added JWT-based authentication (driver & passenger), updated the ride model to include passenger details, and centralized user-facing messages in `src/api/v1/constants/messageConstants.js`.
+
+Key files added:
+- `src/api/v1/models/passenger.model.js` — Passenger model with hashed password
+- `src/api/v1/utills/auth.util.js` — Password hashing and JWT helper functions
+- `src/api/v1/middlewares/auth.middleware.js` — `verifyAuth`, `verifyDriverAuth`, `verifyPassengerAuth`
+- `src/api/v1/helpers/passenger.helper.js` and `src/api/v1/controllers/passenger.controller.js` — Passenger register/login/profile
+- `src/api/v1/routes/passenger.routes.js` — Passenger routes
+
+Key files updated:
+- `src/api/v1/models/driver.model.js` — added `password`, `isActive`, `lastLoginAt`, made email/phone unique
+- `src/api/v1/models/ride.model.js` — added `passengerId`, `passengerPhone`, `passengerEmail`, added indexes (passengerId, pickup/dropoff 2dsphere)
+- `src/api/v1/helpers/driver.helper.js` — driver register/login (password hashing, token generation)
+- `src/api/v1/controllers/driver.controller.js` — added login controller
+- `src/api/v1/formatters/driver.formatter.js` and `src/api/v1/formatters/ride.formatter.js` — capture password on register and passenger info from auth context
+- `src/api/v1/routes/ride.routes.js` and `src/api/v1/index.js` — protected routes and passenger route registration
+- `src/api/v1/helpers/*` and `src/api/v1/middlewares/*` — swapped hardcoded messages for centralized constants
+
+Notes:
+- Set `JWT_SECRET` and `JWT_EXPIRY` in your `.env` before testing.
+- Existing drivers in the DB without passwords will need a migration or password reset.
 
 ---
 
@@ -430,112 +538,3 @@ PATCH /v1/api/rider/{rideId}/complete
 
 ---
 
-## 📁 Project Structure
-
-```
-src/api/v1/
-├── config/
-│   ├── mongodb.js        # MongoDB connection
-│   └── redis.js          # Redis client setup
-├── constants/
-│   └── messageConstants.js
-├── controllers/
-│   ├── driver.controller.js
-│   └── ride.controller.js
-├── formatters/
-│   ├── common.formatter.js
-│   ├── driver.formatter.js
-│   └── ride.formatter.js
-├── helpers/
-│   ├── driver.helper.js
-│   ├── rideMatching.helper.js     # ⭐ Core: geospatial matching
-│   ├── rideState.helper.js        # ⭐ Core: state transitions
-│   └── response.helper.js
-├── jobs/
-│   └── autoCancel.job.js          # ⭐ Auto-cancel job
-├── middlewares/
-│   ├── redisLock.middleware.js
-│   └── stateGuard.middleware.js
-├── models/
-│   ├── driver.model.js
-│   └── ride.model.js
-├── routes/
-│   ├── driver.routes.js
-│   └── ride.routes.js
-└── utills/
-    └── redis.util.js              # ⭐ Distributed lock logic
-```
-
----
-
-## 🎓 Assumptions Made
-
-### System Design Assumptions
-1. **Synchronous Assignment**: Ride assignment happens asynchronously after ride creation (fire-and-forget pattern)
-2. **Location Precision**: Driver location updates every 10-30 seconds; stale data tolerance is acceptable
-3. **Geofencing**: 5km radius chosen as optimal for ride matching; configurable if needed
-4. **Max Retries**: 3 assignment attempts before marking ride as failed; balances between coverage and latency
-5. **Auto-cancel Duration**: 5 minutes is acceptable wait time; if driver doesn't accept by then, ride is cancelled
-
-### Concurrency Model
-6. **Single-threaded Rides**: One ride can only be assigned to one driver at a time (no overbooking)
-7. **Eventual Consistency**: Redis cache may be 10-120 seconds behind MongoDB; source of truth is always DB
-8. **Lock Duration**: 10-second lock TTL is sufficient for lock acquisition and validation; prevents deadlocks
-
-### Driver Behavior
-9. **Driver Availability**: When driver rejects, they're assumed to be still available and open to other ride offers
-10. **Location Updates**: Drivers actively push location every 10-30 seconds; system assumes regular connectivity
-11. **Status Transitions**: Only one ride per driver at a time; driver must complete before accepting another
-
-### Data Integrity
-12. **No Double-booking**: Redis locks prevent simultaneous assignment attempts for same driver
-13. **Ride Immutability**: Once completed/failed, ride status cannot be changed
-14. **Orphan Prevention**: Auto-cancel job ensures no rides stay in "assigned" state indefinitely
-
-### Scalability Considerations
-15. **Job Interval**: Auto-cancel job runs every 60 seconds; acceptable latency for 5-minute timeout
-16. **Geospatial Index**: MongoDB 2dsphere index optimized for ~1-5km queries
-17. **Redis Cluster**: Assumes Redis is highly available; single point of failure for lock operations
-
----
-
-## ⚠️ Known Limitations & Future Improvements
-
-1. **No Rate Limiting**: Add per-driver request limits to prevent abuse
-2. **No Input Validation**: Add Joi/Zod schemas for request validation
-3. **Minimal Logging**: Implement Winston/Pino for structured logging
-4. **No Unit Tests**: Add Jest/Mocha test suites for business logic
-5. **No API Authentication**: Add JWT-based authentication for production
-6. **Simplified Pricing**: Fare calculation is static; dynamic pricing not implemented
-7. **No WebSockets**: Real-time updates currently poll-based; WebSocket can improve UX
-
----
-
-## 🤝 Contributing
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Commit changes: `git commit -am 'Add feature'`
-3. Push to branch: `git push origin feature/your-feature`
-4. Submit a pull request
-
----
-
-## 📄 License
-
-ISC License - Feel free to use this project for educational purposes.
-
----
-
-## 👤 Author
-
-**Akash** - Machine Test Assignment
-
----
-
-## 📞 Support
-
-For issues or questions, please open a GitHub issue.
-
----
-
-**Last Updated**: December 25, 2025

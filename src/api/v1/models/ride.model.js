@@ -2,9 +2,15 @@ import { Schema, model } from "mongoose";
 
 const rideSchema = new Schema({
 
+  passengerId: { type: Schema.Types.ObjectId, ref: "passenger", required: true },
+
   passengerName: { type: String, required: true },
 
   passengerCount: { type: Number, required: true },
+
+  passengerPhone: { type: String, required: true },
+
+  passengerEmail: { type: String, required: true },
 
   pickupLocation: {
     type: { type: String, enum: ["Point"], default: "Point" },
@@ -51,5 +57,8 @@ const rideSchema = new Schema({
 rideSchema.index({ status: 1 });
 rideSchema.index({ createdAt: -1 });
 rideSchema.index({ driverId: 1 });
+rideSchema.index({ passengerId: 1 });
+rideSchema.index({ pickupLocation: "2dsphere" });
+rideSchema.index({ dropoffLocation: "2dsphere" });
 
 export default model("ride", rideSchema);

@@ -3,6 +3,7 @@ export function formatDriverRegisterData(req) {
         name,
         phoneNumber,
         email,
+        password,
         vehicleType,
         capacity,
         latitude,
@@ -13,6 +14,7 @@ export function formatDriverRegisterData(req) {
         name,
         phoneNumber,
         email,
+        password,
         vehicleType,
         capacity,
         location: {

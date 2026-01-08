@@ -4,12 +4,24 @@ import { returnFormatter } from "../formatters/common.formatter.js";
 import {
   driverCreatedMessage,
   driverUpdatedMessage,
-  noDriverFoundMessage
+  noDriverFoundMessage,
+  userAlreadyExistsMessage,
+  emailPasswordRequiredMessage,
+  userNotFoundMessage,
+  invalidPasswordMessage,
+  accountInactiveMessage,
+  driverLoginSuccessMessage,
+  driverRideHistoryFetchedMessage
 } from "../constants/messageConstants.js";
 import {
   setDriverLocationInRedis,
   setDriverStatusInRedis
 } from "../utills/redis.util.js";
+import {
+  hashPassword,
+  comparePassword,
+  generateToken
+} from "../utills/auth.util.js";
 
 import {
   formatDriverRegisterData,
@@ -20,10 +32,80 @@ import {
 // ---------------- register driver ----------------
 export async function registerDriver(req) {
   try {
+    const { email, phoneNumber } = req.body;
+
+    // Check if driver already exists
+    const existingDriver = await Driver.findOne({
+      $or: [{ email }, { phoneNumber }]
+    });
+
+    if (existingDriver) {
+      return returnFormatter(false, userAlreadyExistsMessage);
+    }
+
     const data = formatDriverRegisterData(req);
+    
+    // Hash password
+    data.password = await hashPassword(data.password);
+
     const driver = await Driver.create(data);
 
-    return returnFormatter(true, driverCreatedMessage, driver);
+    // Generate token
+    const token = generateToken(driver._id.toString(), "driver");
+
+    // Return driver without password
+    const driverResponse = driver.toObject();
+    delete driverResponse.password;
+
+    return returnFormatter(true, driverCreatedMessage, {
+      ...driverResponse,
+      token
+    });
+  } catch (error) {
+    return returnFormatter(false, error.message);
+  }
+}
+
+// ---------------- driver login ----------------
+export async function driverLogin(req) {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return returnFormatter(false, emailPasswordRequiredMessage);
+    }
+
+    const driver = await Driver.findOne({ email });
+
+    if (!driver) {
+      return returnFormatter(false, userNotFoundMessage);
+    }
+
+    const isPasswordValid = await comparePassword(password, driver.password);
+
+    if (!isPasswordValid) {
+      return returnFormatter(false, invalidPasswordMessage);
+    }
+
+    if (!driver.isActive) {
+      return returnFormatter(false, accountInactiveMessage);
+    }
+
+    // Update last login
+    driver.lastLoginAt = new Date();
+    await driver.save();
+
+    // Generate token
+    const token = generateToken(driver._id.toString(), "driver");
+
+    // Return driver without password
+    const driverResponse = driver.toObject();
+    delete driverResponse.password;
+
+    return returnFormatter(true, driverLoginSuccessMessage, {
+      ...driverResponse,
+      token
+    });
   } catch (error) {
     return returnFormatter(false, error.message);
   }
@@ -88,7 +170,7 @@ export async function getDriverRideHistory(driverId) {
       .sort({ createdAt: -1 })
       .lean();
 
-    return returnFormatter(true, "Ride history fetched", {
+    return returnFormatter(true, driverRideHistoryFetchedMessage, {
       driver,
       rides,
       totalRides: rides.length,

@@ -1,6 +1,5 @@
 export function formatRideRequestData(req) {
     const {
-        passengerName,
         pickupLatitude,
         pickupLongitude,
         dropLatitude,
@@ -9,8 +8,17 @@ export function formatRideRequestData(req) {
         estimatedFare
     } = req.body;
 
+    // Get passenger info from authenticated request
+    const passengerId = req.userId;
+    const passengerName = req.passengerName || req.body.passengerName;
+    const passengerPhone = req.body.passengerPhone;
+    const passengerEmail = req.body.passengerEmail;
+
     return {
+        passengerId,
         passengerName,
+        passengerPhone: passengerPhone || req.body.phoneNumber,
+        passengerEmail: passengerEmail || req.body.email,
         passengerCount,
         estimatedFare: estimatedFare || 0,
         pickupLocation: {

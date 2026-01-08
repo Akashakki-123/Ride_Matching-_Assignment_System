@@ -5,6 +5,7 @@ import {
   noDriverAvailableMessage,
   rideAssignedMessage
 } from "../constants/messageConstants.js";
+import { noRideFoundMessage } from "../constants/messageConstants.js";
 
 import {
   acquireLock,
@@ -30,7 +31,7 @@ async function findNearestDriver(pickupLocation, excludedDrivers = []) {
 export async function assignRideToDriver(rideId) {
   try {
     const ride = await Ride.findById(rideId);
-    if (!ride) return returnFormatter(false, "Ride not found");
+    if (!ride) return returnFormatter(false, noRideFoundMessage);
 
     if (ride.assignmentAttempts >= 3) {
       ride.status = "failed";

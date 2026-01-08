@@ -9,26 +9,27 @@ import {
   getActiveRides,
   rejectRideInfo
 } from "../controllers/ride.controller.js";
+import { verifyPassengerAuth, verifyDriverAuth, verifyAuth } from "../middlewares/auth.middleware.js";
 
 const rideRouter = Router();
 
-// ---------------- ride requests ----------------
-rideRouter.post("/request", createRideRequest);
+// ---------------- ride requests (passenger auth required) ----------------
+rideRouter.post("/request", verifyPassengerAuth, createRideRequest);
 
-rideRouter.get("/active", getActiveRides);
+rideRouter.get("/active", verifyAuth, getActiveRides);
 
-rideRouter.get("/:id", getRideDetails);
+rideRouter.get("/:id", verifyAuth, getRideDetails);
 
-// ---------------- driver actions ----------------
-rideRouter.patch("/:id/accept", acceptRideInfo);
+// ---------------- driver actions (driver auth required) ----------------
+rideRouter.patch("/:id/accept", verifyDriverAuth, acceptRideInfo);
 
-rideRouter.patch("/:id/reject", rejectRideInfo);
+rideRouter.patch("/:id/reject", verifyDriverAuth, rejectRideInfo);
 
-rideRouter.patch("/:id/start", startRideInfo);
+rideRouter.patch("/:id/start", verifyDriverAuth, startRideInfo);
 
-rideRouter.patch("/:id/complete", completeRideInfo);
+rideRouter.patch("/:id/complete", verifyDriverAuth, completeRideInfo);
 
-// ---------------- cancel ----------------
-rideRouter.patch("/:id/cancel", cancelRideInfo);
+// ---------------- cancel (auth required) ----------------
+rideRouter.patch("/:id/cancel", verifyAuth, cancelRideInfo);
 
 export default rideRouter;

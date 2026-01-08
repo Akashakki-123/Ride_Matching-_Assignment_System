@@ -2,6 +2,13 @@ import Ride from "../models/ride.model.js";
 import Driver from "../models/driver.model.js";
 import { returnFormatter } from "../formatters/common.formatter.js";
 import { assignRideToDriver } from "./rideMatching.helper.js";
+import {
+  invalidRideStateMessage,
+  rideAcceptedMessage,
+  rideStartedMessage,
+  rideCompletedMessage,
+  reassignmentMessage
+} from "../constants/messageConstants.js";
 
 export async function acceptRide(rideId, driverId) {
   try {
@@ -12,13 +19,13 @@ export async function acceptRide(rideId, driverId) {
     });
 
     if (!ride) {
-      return returnFormatter(false, "Invalid ride state");
+      return returnFormatter(false, invalidRideStateMessage);
     }
 
     ride.status = "accepted";
     await ride.save();
 
-    return returnFormatter(true, "Ride accepted", ride);
+    return returnFormatter(true, rideAcceptedMessage, ride);
   } catch (error) {
     return returnFormatter(false, error.message);
   }
@@ -33,14 +40,14 @@ export async function startRide(rideId, driverId) {
     });
 
     if (!ride) {
-      return returnFormatter(false, "Ride cannot be started");
+      return returnFormatter(false, invalidRideStateMessage);
     }
 
     ride.status = "started";
     ride.startTime = new Date();
     await ride.save();
 
-    return returnFormatter(true, "Ride started", ride);
+    return returnFormatter(true, rideStartedMessage, ride);
   } catch (error) {
     return returnFormatter(false, error.message);
   }
@@ -55,7 +62,7 @@ export async function completeRide(rideId, driverId) {
     });
 
     if (!ride) {
-      return returnFormatter(false, "Ride cannot be completed");
+      return returnFormatter(false, invalidRideStateMessage);
     }
 
     ride.status = "completed";
@@ -64,7 +71,7 @@ export async function completeRide(rideId, driverId) {
 
     await Driver.findByIdAndUpdate(driverId, { status: "available" });
 
-    return returnFormatter(true, "Ride completed", ride);
+    return returnFormatter(true, rideCompletedMessage, ride);
   } catch (error) {
     return returnFormatter(false, error.message);
   }
@@ -79,7 +86,7 @@ export async function rejectRide(rideId, driverId) {
     });
 
     if (!ride) {
-      return returnFormatter(false, "Ride cannot be rejected - Invalid state");
+      return returnFormatter(false, invalidRideStateMessage);
     }
 
     // Release driver from this ride
@@ -94,8 +101,8 @@ export async function rejectRide(rideId, driverId) {
     const reassignResult = await assignRideToDriver(rideId);
 
     return returnFormatter(
-      true, 
-      "Ride rejected and reassigned", 
+      true,
+      reassignmentMessage,
       { ride, reassignmentStatus: reassignResult }
     );
   } catch (error) {

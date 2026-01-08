@@ -3,9 +3,11 @@ import { Schema, model } from "mongoose";
 const driverSchema = new Schema({
   name: { type: String, required: true },
   
-  phoneNumber: { type: String, required: true },
+  phoneNumber: { type: String, required: true, unique: true },
 
-  email: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+
+  password: { type: String, required: true },
   
   vehicleType: { type: String, required: true },
 
@@ -28,7 +30,11 @@ const driverSchema = new Schema({
 
   acceptanceRate: { type: Number, default: 100, min: 0, max: 100 },
 
-  lastLocationUpdatedAt: { type: Date, default: Date.now }
+  isActive: { type: Boolean, default: true },
+
+  lastLocationUpdatedAt: { type: Date, default: Date.now },
+
+  lastLoginAt: { type: Date, default: null }
 
 }, { timestamps: true });
 
